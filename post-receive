@@ -1,0 +1,20 @@
+#!/bin/bash
+
+export TS_SOCKET="$GIT_DIR/ts_socket"
+export TS_MAXCONN=12  # Seems to allow for ~5 queued jobs
+
+umask 0002  # Ensure that the ts socket is writable by other group members
+
+while read oldrev newrev refname
+do
+	if ! tsp -B "$GIT_DIR/hooks/_build-and-merge" "$USER" "$refname" "$newrev"
+	then
+		cat <<-eof
+		------------------------------------------------------------
+		Too many queued jobs, automatic build/merge temporarily
+		disabled.
+		------------------------------------------------------------
+		eof
+		exit 1
+	fi
+done

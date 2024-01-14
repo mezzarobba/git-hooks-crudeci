@@ -1,0 +1,19 @@
+#!/bin/bash
+
+refname="$1"
+# oldrev="$2"
+# newrev="$3"
+
+case "$refname" in
+	refs/heads/main)
+		cat <<-eof
+		------------------------------------------------------------
+		Please do no push directly to the "main" branch.
+		Instead, pull from "main" and push to "s/<your-team>".
+		------------------------------------------------------------
+		eof
+		exit 1
+		;;
+esac
+
+exit 0

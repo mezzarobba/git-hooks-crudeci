@@ -1,0 +1,81 @@
+#!/bin/bash
+
+# Build a revision, merge it into main if the build is successful and the merge
+# is fast-forward, report status to the user by email.
+
+# Only one instance of this script should be running at a time (and nothing else
+# should mess with $worktree_base). The order of calls operating on the same
+# branch should be consistent with commit history. There may be new pushes to
+# the git repo (including pushes to the same branch) before or while the script
+# processes a given push.
+
+set -ev
+
+worktree_base="/var/www/html"
+server=XXX
+baseurl="http://$server"
+
+user="$1"
+refname="$2"
+commit="$3"
+
+shortcommit=$(git rev-parse --short "$commit")
+mailtag="[hceres-lix $shortcommit]"
+
+branch="${refname#refs/heads/}"
+worktree="$worktree_base/$branch"
+[ -d "$worktree" ] || git worktree add "$worktree" "$refname"
+
+pushd "$worktree"
+(unset $(git rev-parse --local-env-vars) && git checkout --force "$commit")
+
+if ! (unset $(git rev-parse --local-env-vars) && make -j4 index.html); then
+	<<-eof fmt | mailx -s "$mailtag Build failed" "$user"
+	Compilation for commit $commit failed. Log files are available at
+
+	$baseurl/$branch
+	eof
+	exit 1
+fi
+
+popd
+
+case "$branch" in
+	staging/* | s/*)
+		;;
+	*)
+		<<-eof fmt | mailx -s "$mailtag PDFs available" "$user"
+		The build producs for commit $commit are available from
+
+		$baseurl/$branch
+
+		Automatic merges to main are diabled for this branch.
+		eof
+		exit 0
+esac
+
+oldmain=$(git rev-parse main)
+if git merge-base --is-ancestor "$oldmain" "$commit" \
+		&& git update-ref refs/heads/main "$commit" "$oldmain"; then
+	cp -af "$worktree/." "$worktree_base/main"  # not just a link
+	<<-eof fmt | mailx -s "$mailtag Merged into main" "$user"
+	Commit $commit has been merged into main.
+
+
+	The build producs are available from
+
+	$baseurl/main
+	$baseurl/$branch
+	eof
+else
+	<<-eof fmt | mailx -s "$mailtag Non-fast-forward" "$user"
+	Commit $commit has been successfully built but could not been merged
+	into the main branch. (Only fast-forward merges are performed
+	automatically. If you want the merge to be performed, please merge main
+	into your branch, then push to $branch again.)
+
+	Build products are available from
+
+	$baseurl/$branch
+	eof
+fi

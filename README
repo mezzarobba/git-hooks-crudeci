@@ -1,0 +1,5 @@
+A rudimentary CI system using git hooks. This is intended for usage in a central
+--bare --shared repository.
+
+To the extent possible under law, the author of the adaptation has waived all
+copyright and related or neighboring rights to the contents of this repository.

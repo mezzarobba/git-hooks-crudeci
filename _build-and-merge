@@ -57,7 +57,7 @@ esac
 oldmain=$(git rev-parse main)
 if git merge-base --is-ancestor "$oldmain" "$commit" \
 		&& git update-ref refs/heads/main "$commit" "$oldmain"; then
-	cp -af "$worktree/." "$worktree_base/main"  # not just a link
+	cp -dRf "$worktree/." "$worktree_base/main"  # not just a link
 	<<-eof fmt | mailx -s "$mailtag Merged into main" "$user"
 	Commit $commit has been merged into main.
 
